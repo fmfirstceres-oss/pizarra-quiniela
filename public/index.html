@@ -151,8 +151,10 @@
 </div>
 
 <script>
-    // Usamos variables tradicionales (var) compatibles con cartelerías antiguas
-    var API_URL = 'https://pizarra-quiniela.onrender.com';
+    // DETECCIÓN INTELIGENTE DE URL: Detecta de forma automática si estás en local o en Render y arma la dirección absoluta real sin romper el protocolo de seguridad.
+    var HOST_REAL = window.location.protocol + '//' + window.location.host;
+    var API_URL = HOST_REAL + '/api/quiniela';
+    
     var TIEMPO_API = 5 * 60 * 1000;    
     var TIEMPO_ROTACION = 15000;       
     
@@ -161,23 +163,26 @@
     var ordenTurnos = ['Previa', 'Primera', 'Matutina', 'Vespertina', 'Nocturna'];
 
     function consultarServidor() {
-        console.log('🔄 Conectando con la API...');
+        console.log('🔄 Conectando dinámicamente con la API en: ' + API_URL);
         
-        // Usamos XMLHttpRequest tradicional en lugar de fetch (máxima compatibilidad)
         var xhr = new XMLHttpRequest();
         xhr.open('GET', API_URL, true);
         xhr.onreadystatechange = function () {
-            if (xhr.readyState === 4 && xhr.status === 200) {
-                try {
-                    datosGlobales = JSON.parse(xhr.responseText);
-                    
-                    var panel = document.getElementById('panelSorteos');
-                    // Si la pantalla sigue vacía o cargando, arranca el ciclo
-                    if (panel.innerHTML.indexOf('Cargando') !== -1 || panel.innerHTML === '') {
-                        rotarSorteoVisual();
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    try {
+                        datosGlobales = JSON.parse(xhr.responseText);
+                        
+                        var panel = document.getElementById('panelSorteos');
+                        // Destraba la pantalla si sigue mostrando el texto de carga inicial
+                        if (panel.innerHTML.indexOf('Cargando') !== -1 || panel.innerHTML.indexOf('Preparando') !== -1 || panel.innerHTML === '') {
+                            rotarSorteoVisual();
+                        }
+                    } catch (e) {
+                        console.error('Error al procesar JSON:', e);
                     }
-                } catch (e) {
-                    console.error('Error al procesar JSON:', e);
+                } else {
+                    console.error('Error de servidor. Código de estado:', xhr.status);
                 }
             }
         };
@@ -193,7 +198,6 @@
         while (!turnoAMostrar && intentos < ordenTurnos.length) {
             var candidato = ordenTurnos[indiceTurnoActual];
             
-            // Verificación tradicional de existencia de datos
             var tieneDatos = false;
             for (var k = 0; k < datosGlobales.sorteos.length; k++) {
                 if (datosGlobales.sorteos[k].nombre === candidato) {
@@ -221,7 +225,6 @@
         var panel = document.getElementById('panelSorteos');
         panel.innerHTML = ''; 
 
-        // Filtrado manual compatible
         var sorteosDelHorario = [];
         for (var m = 0; m < data.sorteos.length; m++) {
             if (data.sorteos[m].nombre === turno) {
@@ -241,33 +244,17 @@
                     '<div class="loteria-titulo">' + sorteoLoteria.loteria + '</div>' +
                     '<div class="numeros-lista">';
 
-                        for (var i = 0; i < 10; i++) {
+            for (var i = 0; i < 10; i++) {
                 var numeroImprimir = sorteoLoteria.numeros[i] || "----";
                 
                 if (numeroImprimir !== "----") {
-                    // Relleno de ceros tradicional si el número original viene incompleto
                     while (numeroImprimir.length < 4) {
                         numeroImprimir = '0' + numeroImprimir;
                     }
                     
-                    // REGLA DE CIFRAS: Si NO es la cabeza (i > 0), nos quedamos solo con los últimos 3 dígitos
+                    // REGLA DE CIFRAS: 4 dígitos para la cabeza (i === 0) y 3 para el resto (i > 0)
                     if (i > 0) {
-                        numeroImprimir = numeroImprimir.substring(1); // Corta el primer dígito y deja los 3 últimos
-                    }
-                }
-
-                html += '<div class="numero-fila ' + (i === 0 ? 'cabeza' : '') + '">' +
-                        '<span class="posicion">' + (i + 1) + '°</span>' +
-                        '<span class="valor">' + numeroImprimir + '</span>' +
-                        '</div>';
-            }
- {
-                var numeroImprimir = sorteoLoteria.numeros[i] || "----";
-                
-                if (numeroImprimir !== "----" && numeroImprimir.length < 4) {
-                    // Relleno de ceros tradicional (padStart alternativo)
-                    while (numeroImprimir.length < 4) {
-                        numeroImprimir = '0' + numeroImprimir;
+                        numeroImprimir = numeroImprimir.substring(1); 
                     }
                 }
 
@@ -292,6 +279,7 @@
     }
 
     window.onload = iniciarEcosistema;
+
 </script>
 
 </body>
