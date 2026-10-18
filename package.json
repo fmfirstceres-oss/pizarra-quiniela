@@ -1,0 +1,11 @@
+{
+  "name": "quiniela-scraper",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "scraper.js",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "puppeteer": "^25.14.0"
+  }
+}
