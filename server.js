@@ -3,10 +3,6 @@ import cors from 'cors';
 import puppeteer from 'puppeteer';
 
 const app = express();
-// Busca esta línea:
-const PORT = 3000;
-
-// Y reemplázala por esta:
 const PORT = process.env.PORT || 3000;
 
 
