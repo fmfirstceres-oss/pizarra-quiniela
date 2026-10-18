@@ -241,7 +241,27 @@
                     '<div class="loteria-titulo">' + sorteoLoteria.loteria + '</div>' +
                     '<div class="numeros-lista">';
 
-            for (var i = 0; i < 10; i++) {
+                        for (var i = 0; i < 10; i++) {
+                var numeroImprimir = sorteoLoteria.numeros[i] || "----";
+                
+                if (numeroImprimir !== "----") {
+                    // Relleno de ceros tradicional si el número original viene incompleto
+                    while (numeroImprimir.length < 4) {
+                        numeroImprimir = '0' + numeroImprimir;
+                    }
+                    
+                    // REGLA DE CIFRAS: Si NO es la cabeza (i > 0), nos quedamos solo con los últimos 3 dígitos
+                    if (i > 0) {
+                        numeroImprimir = numeroImprimir.substring(1); // Corta el primer dígito y deja los 3 últimos
+                    }
+                }
+
+                html += '<div class="numero-fila ' + (i === 0 ? 'cabeza' : '') + '">' +
+                        '<span class="posicion">' + (i + 1) + '°</span>' +
+                        '<span class="valor">' + numeroImprimir + '</span>' +
+                        '</div>';
+            }
+ {
                 var numeroImprimir = sorteoLoteria.numeros[i] || "----";
                 
                 if (numeroImprimir !== "----" && numeroImprimir.length < 4) {
