@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pizarra Vertical - Quiniela en Vivo</title>
+    <style>
+        /* Estilos optimizados para monitores verticales o tótems */
+        body { 
+            font-family: 'Segoe UI', Impact, Arial, sans-serif; 
+            background-color: #0f172a; 
+            margin: 0; 
+            padding: 10px; 
+            color: #ffffff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+        .container { 
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #1e293b; 
+            padding: 20px; 
+            border-radius: 16px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+        
+        /* Encabezado Gigante */
+        h1 { 
+            text-align: center; 
+            color: #f59e0b; 
+            margin: 0 0 5px 0; 
+            font-size: 2.8rem; 
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .fecha-actual { 
+            text-align: center; 
+            color: #94a3b8; 
+            margin-bottom: 20px; 
+            font-size: 1.3rem; 
+            font-weight: 500; 
+        }
+        
+        /* Contenedor del Sorteo Único en Pantalla */
+        .bloque-horario { 
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .horario-header { 
+            background: #ef4444; 
+            color: #ffffff; 
+            padding: 15px; 
+            font-size: 2.3rem; 
+            font-weight: bold; 
+            text-align: center; 
+            border-radius: 12px;
+            text-transform: uppercase;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        
+        /* Grilla Vertical: 3 columnas (una para cada lotería) */
+        .loterias-grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 15px; 
+            flex: 1;
+        }
+
+        .columna-loteria { 
+            background: #0f172a; 
+            border: 2px solid #334155; 
+            border-radius: 12px; 
+            padding: 15px 10px; 
+            display: flex;
+            flex-direction: column;
+        }
+        .loteria-titulo { 
+            font-size: 1.8rem; 
+            font-weight: bold; 
+            color: #38bdf8; 
+            text-align: center; 
+            border-bottom: 3px solid #38bdf8; 
+            padding-bottom: 10px; 
+            margin-bottom: 15px; 
+            text-transform: uppercase;
+        }
+        
+        /* Lista de Premios del 1° al 10° */
+        .numeros-lista { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px;
+            flex: 1;
+            justify-content: space-around; /* Distribuye los premios verticalmente */
+        }
+        .numero-fila { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            background: #1e293b; 
+            border: 1px solid #334155; 
+            padding: 12px 15px; 
+            border-radius: 8px; 
+        }
+        .posicion { 
+            font-size: 1.1rem; 
+            color: #94a3b8; 
+            font-weight: bold; 
+        }
+        .valor { 
+            font-weight: bold; 
+            font-size: 1.9rem; 
+            color: #ffffff; 
+            font-family: monospace;
+        }
+        
+        /* Resaltado especial para la Cabeza (1° Premio) */
+        .cabeza { 
+            background: #22c55e; 
+            border-color: #4ade80; 
+            box-shadow: 0 0 15px rgba(34,197,94,0.4);
+        }
+        .cabeza .posicion { color: #ffffff; }
+        .cabeza .valor { color: #ffffff; font-size: 2.4rem; }
+        
+        .loading { text-align: center; font-size: 1.8rem; color: #94a3b8; padding: 40px; }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.01); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎰 Lotería Agencia</h1>
+    <div class="fecha-actual" id="fechaText">Sincronizando...</div>
+    
+    <div id="panelSorteos">
+        <p class="loading">⏳ Cargando datos del servidor...</p>
+    </div>
+</div>
+
+<script>
+    // Cambia esto:
+const API_URL = 'http://localhost:3000/api/quiniela';
+// Por esto:
+const API_URL = '/api/quiniela';
+    const TIEMPO_API = 5 * 60 * 1000;    // Consultar nuevos datos cada 5 minutos
+    const TIEMPO_ROTACION = 15000;       // Cambiar de sorteo en pantalla cada 15 segundos (15000ms)
+    
+    let datosGlobales = null;
+    let indiceTurnoActual = 0;
+    const ordenTurnos = ['Previa', 'Primera', 'Matutina', 'Vespertina', 'Nocturna'];
+
+    async function consultarServidor() {
+        try {
+            const response = await fetch(API_URL);
+            if (!response.ok) throw new Error('Error de red');
+            datosGlobales = await response.json();
+            
+            // Si es la primera vez que carga, inicia la rotación visual de inmediato
+            if (document.getElementById('panelSorteos').querySelector('.loading')) {
+                rotarSorteoVisual();
+            }
+        } catch (error) {
+            console.error('Error al actualizar datos:', error);
+        }
+    }
+
+    function rotarSorteoVisual() {
+        if (!datosGlobales || !datosGlobales.sorteos) return;
+
+        // Buscamos cuál es el siguiente turno del orden cronológico que tiene datos cargados
+        let turnoAMostrar = null;
+        let intentos = 0;
+
+        while (!turnoAMostrar && intentos < ordenTurnos.length) {
+            const candidato = ordenTurnos[indiceTurnoActual];
+            const tieneDatos = datosGlobales.sorteos.some(s => s.nombre === candidato);
+            
+            if (tieneDatos) {
+                turnoAMostrar = candidato;
+            } else {
+                // Si este horario está vacío todavía, pasamos al siguiente
+                indiceTurnoActual = (indiceTurnoActual + 1) % ordenTurnos.length;
+            }
+            intentos++;
+        }
+
+        if (turnoAMostrar) {
+            mostrarUnSoloSorteo(datosGlobales, turnoAMostrar);
+            // Dejamos apuntado el índice para el próximo ciclo
+            indiceTurnoActual = (indiceTurnoActual + 1) % ordenTurnos.length;
+        }
+    }
+
+    function mostrarUnSoloSorteo(data, turno) {
+        document.getElementById('fechaText').innerText = `Extractos Oficiales - Hoy: ${data.fecha}`;
+        const panel = document.getElementById('panelSorteos');
+        panel.innerHTML = ''; 
+
+        // Filtramos solo los sorteos que correspondan al horario elegido
+        const sorteosDelHorario = data.sorteos.filter(s => s.nombre === turno);
+
+        const bloqueHorario = document.createElement('div');
+        bloqueHorario.className = 'bloque-horario';
+
+        let html = `
+            <div class="horario-header">
+                🔥 QUINIELA ${turno.toUpperCase()} 🔥
+            </div>
+            <div class="loterias-grid">
+        `;
+
+        sorteosDelHorario.forEach(sorteoLoteria => {
+            html += `
+                <div class="columna-loteria">
+                    <div class="loteria-titulo">${sorteoLoteria.loteria}</div>
+                    <div class="numeros-lista">
+            `;
+
+            // Limitamos estrictamente la lista rellenando hasta el 10° premio
+            for (let i = 0; i < 10; i++) {
+                // Si el backend envió números los muestra; si no, deja guiones "----"
+                let numeroImprimir = sorteoLoteria.numeros[i] || "----";
+                
+                // Si el número original de contingencia era menor a 4 cifras por pruebas, lo rellenamos
+                if (numeroImprimir !== "----" && numeroImprimir.length < 4) {
+                    numeroImprimir = numeroImprimir.padStart(4, '0');
+                }
+
+                html += `
+                    <div class="numero-fila ${i === 0 ? 'cabeza' : ''}">
+                        <span class="posicion">${i + 1}°</span>
+                        <span class="valor">${numeroImprimir}</span>
+                    </div>
+                `;
+            }
+
+            html += `
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `</div>`; 
+        bloqueHorario.innerHTML = html;
+        panel.appendChild(bloqueHorario);
+    }
+
+    // Configuración de los temporizadores asincrónicos
+    function iniciarEcosistema() {
+        // 1. Pedir datos inmediatamente al encender
+        consultarServidor();
+        
+        // 2. Buscar actualizaciones en segundo plano cada 5 minutos
+        setInterval(consultarServidor, TIEMPO_API);
+
+        // 3. Rotar el sorteo visible en pantalla vertical cada 15 segundos
+        setInterval(rotarSorteoVisual, TIEMPO_ROTACION);
+    }
+
+    window.onload = iniciarEcosistema;
+</script>
+
+</body>
+</html>
