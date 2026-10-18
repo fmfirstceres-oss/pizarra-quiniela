@@ -74,7 +74,7 @@ async function scrapearQuinielas() {
                                 data.sorteos.push({
                                     nombre: turnoFormateado, // Ej: "Matutina"
                                     loteria: loteriaNombre, // Ej: "Ciudad"
-                                    numeros: numeros.slice(0, 5) // Extraemos los primeros 5 puestos
+                                    numeros: numeros.slice(0, 10) // Extraemos los primeros 5 puestos
                                 });
                             }
                         }
