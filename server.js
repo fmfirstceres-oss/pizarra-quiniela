@@ -88,23 +88,37 @@ async function scrapearQuinielas() {
     }
 }
 
-// Ejecutar el scraper automáticamente cada 10 minutos de fondo
-setInterval(scrapearQuinielas, 10 * 60 * 1000);
-scrapearQuinielas(); // Ejecución inicial al encender
+// ... Todo el código anterior de Puppeteer se mantiene igual ...
+
+// ELIMINA la línea anterior que decía setInterval(scrapearQuinielas, ...);
+// Dejamos solo la ejecución inicial por si acaso:
+scrapearQuinielas(); 
 
 // API tradicional para la web directa
-app.get('/api/quiniela', (req, res) => {
+app.get('/api/quiniela', async (req, res) => {
+    // Cada vez que se consulta la API, se intenta buscar números nuevos en vivo
+    try {
+        await scrapearQuinielas();
+    } catch(e) { console.log("Usando última caché disponible"); }
     res.json(datosCacheados);
 });
 
-// RUTA MAESTRA PARA CARTELERÍA DIGITAL: Lee el archivo HTML e inyecta los datos directamente en el código
-app.get('/', (req, res) => {
-    const rutaHtml = path.resolve('public', 'index.html');
+// RUTA MAESTRA PARA CARTELERÍA DIGITAL
+app.get('/', async (req, res) => {
+    console.log('📺 Cartelería conectada. Ejecutando actualización de extractos...');
     
+    // Forzamos al robot a visitar la web oficial en el momento exacto de la petición
+    try {
+        await scrapearQuinielas();
+    } catch(e) { 
+        console.log("No se pudo actualizar en vivo, enviando datos guardados."); 
+    }
+
+    const rutaHtml = path.resolve('public', 'index.html');
     fs.readFile(rutaHtml, 'utf8', (err, htmlContenido) => {
         if (err) return res.status(500).send('Error al cargar la pizarra.');
 
-        // Inyectamos la variable con los datos directamente reemplazando una marca en el HTML
+        // Inyectamos la variable con los datos más frescos capturados recién
         const datosInyectados = `var datosGlobales = ${JSON.stringify(datosCacheados)};`;
         const htmlModificado = htmlContenido.replace('/*INYECCION_DE_DATOS*/', datosInyectados);
         
