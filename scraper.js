@@ -22,7 +22,7 @@ async function ejecutarScraping() {
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
         
         console.log(`🌐 Navegando a la fuente de datos...`);
-        await page.goto(CONFIG.url, { waitUntil: 'networkidle2', timeout: CONFIG.timeout });
+        await page.goto(CONFIG.url, { waitUntil: 'https://quinieleando.com.ar', timeout: CONFIG.timeout });
 
         console.log('🔍 Extrayendo información de las Quinielas...');
 
