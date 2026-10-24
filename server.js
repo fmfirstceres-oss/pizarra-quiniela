@@ -1,166 +1,55 @@
-// scraper.js
-const axios = require('axios');
-const cheerio = require('cheerio');
+// server.js
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const scraper = require('./scraper');
 
-class QuinielaScraper {
-  constructor() {
-    this.baseUrl = 'https://quinieleando.com.ar';
-    this.headers = {
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    };
-    this.ordenTurnos = ['Previa', 'Primera', 'Matutina', 'Vespertina', 'Nocturna'];
-  }
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-  async obtenerPagina(url) {
-    const response = await axios.get(url, { headers: this.headers, timeout: 15000 });
-    return cheerio.load(response.data);
-  }
+let datosGlobales = {
+  fecha: new Date().toLocaleDateString('es-AR'),
+  turnoVigente: 'Previa',
+  sorteos: []
+};
 
-  // Extrae un array de 10 números (de 4 cifras) ordenados del 1° al 10° puesto
-  _parsePrimerosDiez($, $table) {
-    const numeros = Array(10).fill('----');
-    let tieneDatos = false;
-
-    if (!$table || $table.length === 0) return { tieneDatos, numeros };
-
-    $table.find('tbody tr').each((i, fila) => {
-      const $cells = $(fila).find('td');
-      for (let j = 0; j < $cells.length; j += 2) {
-        const pos = parseInt($($cells[j]).text().trim(), 10);
-        const numCell = $cells[j + 1];
-
-        if (!isNaN(pos) && pos >= 1 && pos <= 10 && numCell) {
-          const boldText = $(numCell).find('b').text().trim();
-          const rawText = boldText || $(numCell).text().trim();
-          const match = rawText.match(/\d{1,4}/);
-
-          if (match) {
-            numeros[pos - 1] = match[0].padStart(4, '0');
-            tieneDatos = true;
-          }
-        }
-      }
-    });
-
-    return { tieneDatos, numeros };
-  }
-
-  async _extraerLoteriaPorUrl(pathUrl) {
-    const porTurno = {
-      Previa: null,
-      Primera: null,
-      Matutina: null,
-      Vespertina: null,
-      Nocturna: null
-    };
-
-    try {
-      const $ = await this.obtenerPagina(`${this.baseUrl}${pathUrl}`);
-
-      $('table').each((i, table) => {
-        const $table = $(table);
-        const heading = $table.find('thead h3').text().toLowerCase();
-
-        let turno = null;
-        if (heading.includes('previa')) turno = 'Previa';
-        else if (heading.includes('primera')) turno = 'Primera';
-        else if (heading.includes('matutina')) turno = 'Matutina';
-        else if (heading.includes('vespertina')) turno = 'Vespertina';
-        else if (heading.includes('nocturna')) turno = 'Nocturna';
-
-        if (turno) {
-          const { tieneDatos, numeros } = this._parsePrimerosDiez($, $table);
-          if (tieneDatos) {
-            porTurno[turno] = numeros;
-          }
-        }
-      });
-    } catch (error) {
-      console.error(`Error al extraer ${pathUrl}:`, error.message);
+async function actualizarExtractos() {
+  try {
+    console.log('Actualizando extractos de Quiniela (Santa Fe, Provincia, Nacional)...');
+    const nuevosDatos = await scraper.obtenerDatosPizarra();
+    if (nuevosDatos && nuevosDatos.sorteos.length > 0) {
+      datosGlobales = nuevosDatos;
+      console.log(`Sorteo vigente activo: ${datosGlobales.turnoVigente} (${datosGlobales.fecha})`);
     }
-
-    return porTurno;
-  }
-
-  async _obtenerDatosDelDia(sufijoUrl, diasOffset = 0) {
-    const loteriasConfig = [
-      { nombre: 'Santa Fe', slug: 'santafe' },
-      { nombre: 'Provincia', slug: 'buenosaires' },
-      { nombre: 'Nacional', slug: 'nacional' }
-    ];
-
-    const resultadosLoterias = await Promise.all(
-      loteriasConfig.map(async lot => ({
-        loteria: lot.nombre,
-        turnos: await this._extraerLoteriaPorUrl(`/quinielas/${lot.slug}/${sufijoUrl}`)
-      }))
-    );
-
-    // Determinar cuál es el último turno (sorteo vigente) que ya tiene números cargados
-    let turnoVigente = null;
-    for (const turno of this.ordenTurnos) {
-      const algunaTieneDatos = resultadosLoterias.some(
-        r => r.turnos[turno] !== null
-      );
-      if (algunaTieneDatos) {
-        turnoVigente = turno;
-      }
-    }
-
-    if (!turnoVigente) {
-      return null;
-    }
-
-    // Armar el listado solo con el sorteo vigente para las 3 quinielas
-    const sorteos = resultadosLoterias.map(r => ({
-      nombre: turnoVigente,
-      loteria: r.loteria,
-      numeros: r.turnos[turnoVigente] || Array(10).fill('----')
-    }));
-
-    return {
-      fecha: this.obtenerFecha(diasOffset),
-      turnoVigente,
-      sorteos
-    };
-  }
-
-  async obtenerDatosPizarra() {
-    // 1. Intentar con los sorteos de HOY
-    const datosHoy = await this._obtenerDatosDelDia('resultados-de-hoy', 0);
-    if (datosHoy) {
-      return datosHoy;
-    }
-
-    // 2. Si todavía no salió La Previa de hoy, mostrar la Nocturna de AYER
-    console.log('Aún sin sorteos de hoy. Mostrando último sorteo de ayer (Nocturna)...');
-    const datosAyer = await this._obtenerDatosDelDia('resultados-de-ayer', -1);
-    if (datosAyer) {
-      return datosAyer;
-    }
-
-    // 3. Estructura vacía de respaldo si no hay conexión
-    return {
-      fecha: this.obtenerFecha(0),
-      turnoVigente: 'Previa',
-      sorteos: [
-        { nombre: 'Previa', loteria: 'Santa Fe', numeros: Array(10).fill('----') },
-        { nombre: 'Previa', loteria: 'Provincia', numeros: Array(10).fill('----') },
-        { nombre: 'Previa', loteria: 'Nacional', numeros: Array(10).fill('----') }
-      ]
-    };
-  }
-
-  obtenerFecha(diasOffset = 0) {
-    const fecha = new Date();
-    fecha.setDate(fecha.getDate() + diasOffset);
-    return fecha.toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+  } catch (error) {
+    console.error('Error al actualizar extractos:', error.message);
   }
 }
 
-module.exports = new QuinielaScraper();
+// Actualizar al iniciar y repetir automáticamente cada 2 minutos
+actualizarExtractos();
+setInterval(actualizarExtractos, 2 * 60 * 1000);
+
+// Endpoint JSON para que la pizarra consulte cambios automáticamente en segundo plano
+app.get('/api/datos', (req, res) => {
+  res.json(datosGlobales);
+});
+
+// Ruta principal que inyecta datosGlobales dentro de public/index.html
+app.get('/', (req, res) => {
+  const indexPath = path.join(__dirname, 'public', 'index.html');
+  fs.readFile(indexPath, 'utf8', (err, html) => {
+    if (err) {
+      return res.status(500).send('Error cargando la pizarra');
+    }
+    const scriptInyeccion = `var datosGlobales = ${JSON.stringify(datosGlobales)};`;
+    const htmlConDatos = html.replace('/*INYECCION_DE_DATOS*/', scriptInyeccion);
+    res.send(htmlConDatos);
+  });
+});
+
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.listen(PORT, () => {
+  console.log(`Pizarra corriendo en puerto ${PORT}`);
+});
