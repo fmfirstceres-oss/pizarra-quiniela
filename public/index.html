@@ -35,43 +35,32 @@
     // MARCA DE REEMPLAZO: El servidor Express va a sobreescribir este comentario metiendo los números reales aquí dentro.
     /*INYECCION_DE_DATOS*/
 
-    var TIEMPO_ROTACION = 15000; // Cambiar de sorteo cada 15 segundos
-    var indiceTurnoActual = 0;
+    var TIEMPO_ACTUALIZACION = 60000; // Consultar nuevos sorteos al servidor cada 1 minuto
     var ordenTurnos = ['Previa', 'Primera', 'Matutina', 'Vespertina', 'Nocturna'];
 
-    function rotarSorteoVisual() {
-        if (!datosGlobales || !datosGlobales.sorteos) return;
+    function mostrarSorteoVigente() {
+        if (!datosGlobales || !datosGlobales.sorteos || datosGlobales.sorteos.length === 0) return;
 
-        var turnoAMostrar = null;
-        var intentos = 0;
-
-        while (!turnoAMostrar && intentos < ordenTurnos.length) {
-            var candidato = ordenTurnos[indiceTurnoActual];
-            var tieneDatos = false;
-            
-            for (var k = 0; k < datosGlobales.sorteos.length; k++) {
-                if (datosGlobales.sorteos[k].nombre === candidato) {
-                    tieneDatos = true;
-                    break;
+        // Buscar el último sorteo disponible en orden cronológico
+        var turnoVigente = datosGlobales.turnoVigente || null;
+        if (!turnoVigente) {
+            for (var i = 0; i < ordenTurnos.length; i++) {
+                var candidato = ordenTurnos[i];
+                for (var k = 0; k < datosGlobales.sorteos.length; k++) {
+                    if (datosGlobales.sorteos[k].nombre === candidato) {
+                        turnoVigente = candidato;
+                    }
                 }
             }
-            
-            if (tieneDatos) {
-                turnoAMostrar = candidato;
-            } else {
-                indiceTurnoActual = (indiceTurnoActual + 1) % ordenTurnos.length;
-            }
-            intentos++;
         }
 
-        if (turnoAMostrar) {
-            renderizarPizarra(datosGlobales, turnoAMostrar);
-            indiceTurnoActual = (indiceTurnoActual + 1) % ordenTurnos.length;
+        if (turnoVigente) {
+            renderizarPizarra(datosGlobales, turnoVigente);
         }
     }
 
     function renderizarPizarra(data, turno) {
-        document.getElementById('fechaText').innerText = 'Extractos Oficiales - Hoy: ' + data.fecha;
+        document.getElementById('fechaText').innerText = 'Extractos Oficiales - Fecha: ' + data.fecha;
         var panel = document.getElementById('panelSorteos');
         panel.innerHTML = ''; 
 
@@ -120,10 +109,24 @@
         panel.appendChild(bloqueHorario);
     }
 
+    async function actualizarDatosEnVivo() {
+        try {
+            var respuesta = await fetch('/api/datos');
+            if (respuesta.ok) {
+                var nuevosDatos = await respuesta.json();
+                if (nuevosDatos && nuevosDatos.sorteos) {
+                    datosGlobales = nuevosDatos;
+                    mostrarSorteoVigente();
+                }
+            }
+        } catch (err) {
+            console.error('Error actualizando datos en vivo:', err);
+        }
+    }
+
     function iniciarEcosistema() {
-        // Ejecuta el carrusel inmediatamente con los datos autoinyectados
-        rotarSorteoVisual();
-        setInterval(rotarSorteoVisual, TIEMPO_ROTACION);
+        mostrarSorteoVigente();
+        setInterval(actualizarDatosEnVivo, TIEMPO_ACTUALIZACION);
     }
 
     window.onload = iniciarEcosistema;
