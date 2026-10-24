@@ -1,101 +1,166 @@
-import puppeteer from 'puppeteer';
+// scraper.js
+const axios = require('axios');
+const cheerio = require('cheerio');
 
-// Configuración de los objetivos de extracción
-const CONFIG = {
-    url: 'https://quinielanacionaln.com.ar/', // Usamos un portal consolidado estable para los selectores
-    timeout: 30000
-};
+class QuinielaScraper {
+  constructor() {
+    this.baseUrl = 'https://quinieleando.com.ar';
+    this.headers = {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    };
+    this.ordenTurnos = ['Previa', 'Primera', 'Matutina', 'Vespertina', 'Nocturna'];
+  }
 
-async function ejecutarScraping() {
-    console.log('🚀 Iniciando el navegador dinámico...');
-    
-    // Lanzamos Puppeteer con argumentos esenciales para evitar bloqueos básicos
-    const browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+  async obtenerPagina(url) {
+    const response = await axios.get(url, { headers: this.headers, timeout: 15000 });
+    return cheerio.load(response.data);
+  }
+
+  // Extrae un array de 10 números (de 4 cifras) ordenados del 1° al 10° puesto
+  _parsePrimerosDiez($, $table) {
+    const numeros = Array(10).fill('----');
+    let tieneDatos = false;
+
+    if (!$table || $table.length === 0) return { tieneDatos, numeros };
+
+    $table.find('tbody tr').each((i, fila) => {
+      const $cells = $(fila).find('td');
+      for (let j = 0; j < $cells.length; j += 2) {
+        const pos = parseInt($($cells[j]).text().trim(), 10);
+        const numCell = $cells[j + 1];
+
+        if (!isNaN(pos) && pos >= 1 && pos <= 10 && numCell) {
+          const boldText = $(numCell).find('b').text().trim();
+          const rawText = boldText || $(numCell).text().trim();
+          const match = rawText.match(/\d{1,4}/);
+
+          if (match) {
+            numeros[pos - 1] = match[0].padStart(4, '0');
+            tieneDatos = true;
+          }
+        }
+      }
     });
 
+    return { tieneDatos, numeros };
+  }
+
+  async _extraerLoteriaPorUrl(pathUrl) {
+    const porTurno = {
+      Previa: null,
+      Primera: null,
+      Matutina: null,
+      Vespertina: null,
+      Nocturna: null
+    };
+
     try {
-        const page = await browser.newPage();
-        
-        // Configuramos un User-Agent real para simular un navegador común
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-        
-        console.log(`🌐 Navegando a la fuente de datos...`);
-        await page.goto(CONFIG.url, { waitUntil: 'https://quinieleando.com.ar', timeout: CONFIG.timeout });
+      const $ = await this.obtenerPagina(`${this.baseUrl}${pathUrl}`);
 
-        console.log('🔍 Extrayendo información de las Quinielas...');
+      $('table').each((i, table) => {
+        const $table = $(table);
+        const heading = $table.find('thead h3').text().toLowerCase();
 
-        // Ejecutamos lógica dentro del contexto del navegador web cargado
-        const resultados = await page.evaluate(() => {
-            const data = {
-                fecha: new Date().toLocaleDateString('es-AR'),
-                quinielas: {}
-            };
+        let turno = null;
+        if (heading.includes('previa')) turno = 'Previa';
+        else if (heading.includes('primera')) turno = 'Primera';
+        else if (heading.includes('matutina')) turno = 'Matutina';
+        else if (heading.includes('vespertina')) turno = 'Vespertina';
+        else if (heading.includes('nocturna')) turno = 'Nocturna';
 
-            // Lista de las quinielas específicas que nos interesan
-            const objetivos = [
-                { clave: 'ciudad', nombresPosibles: ['CIUDAD', 'NACIONAL'] },
-                { clave: 'buenos_aires', nombresPosibles: ['PROVINCIA', 'BUENOS AIRES', 'BS AS'] },
-                { clave: 'santa_fe', nombresPosibles: ['SANTA FE'] }
-            ];
-
-            // NOTA: Esta lógica se adapta analizando los contenedores (div, tablas o bloques) de la web objetivo.
-            // Buscaremos títulos de secciones que coincidan con nuestras quinielas.
-            const bloquesSorteos = document.querySelectorAll('.bloque-sorteo, table, .quiniela-contenedor, div'); 
-
-            objetivos.forEach(objetivo => {
-                data.quinielas[objetivo.clave] = {
-                    turnos: {}
-                };
-
-                bloquesSorteos.forEach(bloque => {
-                    const textoBloque = bloque.innerText ? bloque.innerText.toUpperCase() : '';
-                    
-                    // Verificamos si este elemento de la página pertenece a la quiniela buscada
-                    const coincideLotería = objetivo.nombresPosibles.some(nombre => textoBloque.includes(nombre));
-                    
-                    if (coincideLotería) {
-                        // Identificamos los turnos del día comunes en Argentina
-                        const turnosDisponibles = ['PREVIA', 'PRIMERA', 'MATUTINA', 'VESPERTINA', 'NOCTURNA'];
-                        
-                        turnosDisponibles.forEach(turno => {
-                            if (textoBloque.includes(turno)) {
-                                // Aquí localizamos el número a la cabeza o la lista (Grilla)
-                                // En este ejemplo simplificado, simulamos la extracción mediante expresiones regulares o selectores hijos
-                                // un raspado real busca el elemento hermano o hijo: bloque.querySelector('.numero').innerText
-                                
-                                // Buscaremos patrones de 4 dígitos consecutivos en el texto cercano al turno
-                                const regexNumeros = /\b\d{4}\b/g;
-                                const encontrados = textoBloque.match(regexNumeros) || [];
-                                
-                                if (encontrados.length > 0) {
-                                    data.quinielas[objetivo.clave].turnos[turno.toLowerCase()] = {
-                                        cabeza: encontrados[0], // El primero suele ser el primer premio
-                                        lista completa: encontrados.slice(0, 20) // Los 20 premios si estuvieran listados
-                                    };
-                                }
-                            }
-                        });
-                    }
-                });
-            });
-
-            return data;
-        });
-
-        console.log('✅ Datos extraídos con éxito:');
-        console.log(JSON.stringify(resultados, null, 2));
-        
-        return resultados;
-
+        if (turno) {
+          const { tieneDatos, numeros } = this._parsePrimerosDiez($, $table);
+          if (tieneDatos) {
+            porTurno[turno] = numeros;
+          }
+        }
+      });
     } catch (error) {
-        console.error('❌ Ocurrió un error durante el scraping:', error.message);
-    } finally {
-        await browser.close();
-        console.log('🔒 Navegador cerrado de forma segura.');
+      console.error(`Error al extraer ${pathUrl}:`, error.message);
     }
+
+    return porTurno;
+  }
+
+  async _obtenerDatosDelDia(sufijoUrl, diasOffset = 0) {
+    const loteriasConfig = [
+      { nombre: 'Santa Fe', slug: 'santafe' },
+      { nombre: 'Provincia', slug: 'buenosaires' },
+      { nombre: 'Nacional', slug: 'nacional' }
+    ];
+
+    const resultadosLoterias = await Promise.all(
+      loteriasConfig.map(async lot => ({
+        loteria: lot.nombre,
+        turnos: await this._extraerLoteriaPorUrl(`/quinielas/${lot.slug}/${sufijoUrl}`)
+      }))
+    );
+
+    // Determinar cuál es el último turno (sorteo vigente) que ya tiene números cargados
+    let turnoVigente = null;
+    for (const turno of this.ordenTurnos) {
+      const algunaTieneDatos = resultadosLoterias.some(
+        r => r.turnos[turno] !== null
+      );
+      if (algunaTieneDatos) {
+        turnoVigente = turno;
+      }
+    }
+
+    if (!turnoVigente) {
+      return null;
+    }
+
+    // Armar el listado solo con el sorteo vigente para las 3 quinielas
+    const sorteos = resultadosLoterias.map(r => ({
+      nombre: turnoVigente,
+      loteria: r.loteria,
+      numeros: r.turnos[turnoVigente] || Array(10).fill('----')
+    }));
+
+    return {
+      fecha: this.obtenerFecha(diasOffset),
+      turnoVigente,
+      sorteos
+    };
+  }
+
+  async obtenerDatosPizarra() {
+    // 1. Intentar con los sorteos de HOY
+    const datosHoy = await this._obtenerDatosDelDia('resultados-de-hoy', 0);
+    if (datosHoy) {
+      return datosHoy;
+    }
+
+    // 2. Si todavía no salió La Previa de hoy, mostrar la Nocturna de AYER
+    console.log('Aún sin sorteos de hoy. Mostrando último sorteo de ayer (Nocturna)...');
+    const datosAyer = await this._obtenerDatosDelDia('resultados-de-ayer', -1);
+    if (datosAyer) {
+      return datosAyer;
+    }
+
+    // 3. Estructura vacía de respaldo si no hay conexión
+    return {
+      fecha: this.obtenerFecha(0),
+      turnoVigente: 'Previa',
+      sorteos: [
+        { nombre: 'Previa', loteria: 'Santa Fe', numeros: Array(10).fill('----') },
+        { nombre: 'Previa', loteria: 'Provincia', numeros: Array(10).fill('----') },
+        { nombre: 'Previa', loteria: 'Nacional', numeros: Array(10).fill('----') }
+      ]
+    };
+  }
+
+  obtenerFecha(diasOffset = 0) {
+    const fecha = new Date();
+    fecha.setDate(fecha.getDate() + diasOffset);
+    return fecha.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  }
 }
 
-// Ejecutar el script
-ejecutarScraping();
+module.exports = new QuinielaScraper();
