@@ -1,96 +1,166 @@
-import express from 'express';
-import cors from 'cors';
-import axios from 'axios';
-import fs from 'fs';
-import path from 'path';
+// scraper.js
+const axios = require('axios');
+const cheerio = require('cheerio');
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+class QuinielaScraper {
+  constructor() {
+    this.baseUrl = 'https://quinieleando.com.ar';
+    this.headers = {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    };
+    this.ordenTurnos = ['Previa', 'Primera', 'Matutina', 'Vespertina', 'Nocturna'];
+  }
 
-app.use(cors());
-app.use(express.json());
+  async obtenerPagina(url) {
+    const response = await axios.get(url, { headers: this.headers, timeout: 15000 });
+    return cheerio.load(response.data);
+  }
 
-// Memoria volátil para mantener la pizarra activa
-let datosCacheados = {
-    fecha: new Date().toLocaleDateString('es-AR'),
-    sorteos: []
-};
+  // Extrae un array de 10 números (de 4 cifras) ordenados del 1° al 10° puesto
+  _parsePrimerosDiez($, $table) {
+    const numeros = Array(10).fill('----');
+    let tieneDatos = false;
 
-// Mapeo estructurado para normalizar nombres
-const mapeoLoterias = {
-    'NACIONAL': 'Ciudad', 'CIUDAD': 'Ciudad',
-    'PROVINCIA': 'Buenos Aires', 'BUENOS AIRES': 'Buenos Aires', 'BSAS': 'Buenos Aires',
-    'SANTA FE': 'Santa Fe', 'SANTAFE': 'Santa Fe'
-};
+    if (!$table || $table.length === 0) return { tieneDatos, numeros };
 
-const mapeoTurnos = {
-    'PREVIA': 'Previa', 'PRIMERA': 'Primera', 
-    'MATUTINA': 'Matutina', 'VESPERTINA': 'Vespertina', 'NOCTURNA': 'Nocturna'
-};
+    $table.find('tbody tr').each((i, fila) => {
+      const $cells = $(fila).find('td');
+      for (let j = 0; j < $cells.length; j += 2) {
+        const pos = parseInt($($cells[j]).text().trim(), 10);
+        const numCell = $cells[j + 1];
 
-// Función de automatización directa (Sin requerir Chrome/Puppeteer)
-async function actualizarNumerosEnVivo() {
-    try {
-        console.log('🔄 Conectando con las bases de datos de loterías...');
-        
-        // Consultamos un origen de datos JSON consolidado de alta disponibilidad para pizarras
-        const response = await axios.get('https://casaloteria.com.ar', { timeout: 8000 });
-        
-        if (response.data && response.data.sorteos) {
-            datosCacheados.fecha = response.data.fecha || new Date().toLocaleDateString('es-AR');
-            datosCacheados.sorteos = response.data.sorteos;
-            console.log('✅ Base de datos sincronizada con éxito automáticamente.');
-            return;
+        if (!isNaN(pos) && pos >= 1 && pos <= 10 && numCell) {
+          const boldText = $(numCell).find('b').text().trim();
+          const rawText = boldText || $(numCell).text().trim();
+          const match = rawText.match(/\d{1,4}/);
+
+          if (match) {
+            numeros[pos - 1] = match[0].padStart(4, '0');
+            tieneDatos = true;
+          }
         }
+      }
+    });
+
+    return { tieneDatos, numeros };
+  }
+
+  async _extraerLoteriaPorUrl(pathUrl) {
+    const porTurno = {
+      Previa: null,
+      Primera: null,
+      Matutina: null,
+      Vespertina: null,
+      Nocturna: null
+    };
+
+    try {
+      const $ = await this.obtenerPagina(`${this.baseUrl}${pathUrl}`);
+
+      $('table').each((i, table) => {
+        const $table = $(table);
+        const heading = $table.find('thead h3').text().toLowerCase();
+
+        let turno = null;
+        if (heading.includes('previa')) turno = 'Previa';
+        else if (heading.includes('primera')) turno = 'Primera';
+        else if (heading.includes('matutina')) turno = 'Matutina';
+        else if (heading.includes('vespertina')) turno = 'Vespertina';
+        else if (heading.includes('nocturna')) turno = 'Nocturna';
+
+        if (turno) {
+          const { tieneDatos, numeros } = this._parsePrimerosDiez($, $table);
+          if (tieneDatos) {
+            porTurno[turno] = numeros;
+          }
+        }
+      });
     } catch (error) {
-        console.log('⚠️ Error al consultar origen principal, activando contingencia algorítmica.');
+      console.error(`Error al extraer ${pathUrl}:`, error.message);
     }
 
-    // ALGORITMO SALVAVIDAS CRONOLÓGICO: Si las APIs externas experimentan microcortes,
-    // el servidor autogenera los movimientos lógicos del día para mantener tu cartelera activa con números reales de hoy
-    datosCacheados.fecha = new Date().toLocaleDateString('es-AR');
-    datosCacheados.sorteos = [
-        { nombre: "Previa", loteria: "Ciudad", numeros: ["2251", "2998", "0999", "0994", "6089", "0546", "8258", "9954", "8657", "4608"] },
-        { nombre: "Previa", loteria: "Buenos Aires", numeros: ["0821", "3104", "3899", "7589", "9231", "1264", "8665", "1224", "6282", "0727"] },
-        { nombre: "Previa", loteria: "Santa Fe", numeros: ["5564", "6880", "7891", "7664", "6057", "7339", "2972", "1387", "7972", "5734"] },
-        
-        { nombre: "Primera", loteria: "Ciudad", numeros: ["3690", "6437", "5473", "8226", "6707", "6363", "5284", "5069", "9439", "7737"] },
-        { nombre: "Primera", loteria: "Buenos Aires", numeros: ["1531", "4102", "8931", "5546", "7120", "2391", "1122", "3344", "5566", "7788"] },
-        { nombre: "Primera", loteria: "Santa Fe", numeros: ["2794", "2674", "0854", "5562", "5336", "1243", "5687", "9021", "3465", "7809"] },
-        
-        { nombre: "Matutina", loteria: "Ciudad", numeros: ["7016", "4571", "2701", "9394", "7106", "1132", "3354", "5576", "7798", "9910"] },
-        { nombre: "Matutina", loteria: "Buenos Aires", numeros: ["9361", "4051", "3456", "7820", "1192", "4532", "1123", "8944", "0231", "5567"] },
-        { nombre: "Matutina", loteria: "Santa Fe", numeros: ["7344", "9812", "0944", "3211", "6711", "9821", "3452", "0912", "7743", "5167"] },
+    return porTurno;
+  }
 
-        { nombre: "Vespertina", loteria: "Ciudad", numeros: ["9313", "7117", "5908", "4015", "1888", "6294", "1103", "8492", "3750", "4105"] },
-        { nombre: "Vespertina", loteria: "Buenos Aires", numeros: ["0993", "5352", "8325", "6416", "9155", "0541", "3329", "7411", "9023", "1256"] },
-        { nombre: "Vespertina", loteria: "Santa Fe", numeros: ["7829", "0712", "0100", "6366", "0522", "3288", "4102", "8931", "5546", "7120"] },
-
-        { nombre: "Nocturna", loteria: "Ciudad", numeros: ["7287", "4733", "1773", "1376", "1736", "7080", "1932", "2966", "2577", "0152"] },
-        { nombre: "Nocturna", loteria: "Buenos Aires", numeros: ["3288", "4102", "8931", "5546", "7120", "9361", "4051", "3456", "7820", "1192"] },
-        { nombre: "Nocturna", loteria: "Santa Fe", numeros: ["7080", "1932", "2966", "2577", "0152", "7880", "6899", "8190", "7019", "5574"] }
+  async _obtenerDatosDelDia(sufijoUrl, diasOffset = 0) {
+    const loteriasConfig = [
+      { nombre: 'Santa Fe', slug: 'santafe' },
+      { nombre: 'Provincia', slug: 'buenosaires' },
+      { nombre: 'Nacional', slug: 'nacional' }
     ];
+
+    const resultadosLoterias = await Promise.all(
+      loteriasConfig.map(async lot => ({
+        loteria: lot.nombre,
+        turnos: await this._extraerLoteriaPorUrl(`/quinielas/${lot.slug}/${sufijoUrl}`)
+      }))
+    );
+
+    // Determinar cuál es el último turno (sorteo vigente) que ya tiene números cargados
+    let turnoVigente = null;
+    for (const turno of this.ordenTurnos) {
+      const algunaTieneDatos = resultadosLoterias.some(
+        r => r.turnos[turno] !== null
+      );
+      if (algunaTieneDatos) {
+        turnoVigente = turno;
+      }
+    }
+
+    if (!turnoVigente) {
+      return null;
+    }
+
+    // Armar el listado solo con el sorteo vigente para las 3 quinielas
+    const sorteos = resultadosLoterias.map(r => ({
+      nombre: turnoVigente,
+      loteria: r.loteria,
+      numeros: r.turnos[turnoVigente] || Array(10).fill('----')
+    }));
+
+    return {
+      fecha: this.obtenerFecha(diasOffset),
+      turnoVigente,
+      sorteos
+    };
+  }
+
+  async obtenerDatosPizarra() {
+    // 1. Intentar con los sorteos de HOY
+    const datosHoy = await this._obtenerDatosDelDia('resultados-de-hoy', 0);
+    if (datosHoy) {
+      return datosHoy;
+    }
+
+    // 2. Si todavía no salió La Previa de hoy, mostrar la Nocturna de AYER
+    console.log('Aún sin sorteos de hoy. Mostrando último sorteo de ayer (Nocturna)...');
+    const datosAyer = await this._obtenerDatosDelDia('resultados-de-ayer', -1);
+    if (datosAyer) {
+      return datosAyer;
+    }
+
+    // 3. Estructura vacía de respaldo si no hay conexión
+    return {
+      fecha: this.obtenerFecha(0),
+      turnoVigente: 'Previa',
+      sorteos: [
+        { nombre: 'Previa', loteria: 'Santa Fe', numeros: Array(10).fill('----') },
+        { nombre: 'Previa', loteria: 'Provincia', numeros: Array(10).fill('----') },
+        { nombre: 'Previa', loteria: 'Nacional', numeros: Array(10).fill('----') }
+      ]
+    };
+  }
+
+  obtenerFecha(diasOffset = 0) {
+    const fecha = new Date();
+    fecha.setDate(fecha.getDate() + diasOffset);
+    return fecha.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  }
 }
 
-// Ruta raíz para servir la Cartelería inyectada
-app.get('/', async (req, res) => {
-    // Cada vez que el reproductor solicita el HTML, el servidor refresca los datos desde internet automáticamente
-    await actualizarNumerosEnVivo();
-
-    const rutaHtml = path.resolve('public', 'index.html');
-    fs.readFile(rutaHtml, 'utf8', (err, htmlContenido) => {
-        if (err) return res.status(500).send('Error de sistema.');
-
-        const datosInyectados = `var datosGlobales = ${JSON.stringify(datosCacheados)};`;
-        const htmlModificado = htmlContenido.replace('/*INYECCION_DE_DATOS*/', datosInyectados);
-        
-        res.send(htmlModificado);
-    });
-});
-
-app.get('/api/quiniela', async (req, res) => {
-    await actualizarNumerosEnVivo();
-    res.json(datosCacheados);
-});
-
-app.listen(PORT, () => console.log(`🌐 Sistema automatizado en puerto ${PORT}`));
+module.exports = new QuinielaScraper();
