@@ -3,135 +3,151 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pizarra Vertical - Quiniela en Vivo</title>
+    <title>Pizarra Oficial - Lotería de Santa Fe</title>
     <style>
-        body { font-family: 'Segoe UI', Impact, Arial, sans-serif; background-color: #0f172a; margin: 0; padding: 8px; color: #ffffff; height: 100vh; display: flex; flex-direction: column; box-sizing: border-box; }
-        .container { flex: 1; display: flex; flex-direction: column; background: #1e293b; padding: 12px 16px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; min-height: 0; }
-        h1 { text-align: center; color: #f59e0b; margin: 0 0 2px 0; font-size: 2.3rem; text-transform: uppercase; letter-spacing: 2px; line-height: 1.1; }
-        .fecha-actual { text-align: center; color: #94a3b8; margin-bottom: 8px; font-size: 1.2rem; font-weight: 500; }
-        .bloque-horario { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-        .horario-header { background: #ef4444; color: #ffffff; padding: 8px; font-size: 2rem; font-weight: bold; text-align: center; border-radius: 10px; text-transform: uppercase; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 10px; line-height: 1.1; }
-        .loterias-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; flex: 1; min-height: 0; }
-        .columna-loteria { background: #0f172a; border: 2px solid #334155; border-radius: 12px; padding: 10px 8px; display: flex; flex-direction: column; min-height: 0; }
-        .loteria-titulo { font-size: 1.8rem; font-weight: bold; color: #38bdf8; text-align: center; border-bottom: 3px solid #38bdf8; padding-bottom: 6px; margin-bottom: 8px; text-transform: uppercase; line-height: 1; }
-        .numeros-lista { display: flex; flex-direction: column; gap: 4px; flex: 1; justify-content: space-between; min-height: 0; }
-        .numero-fila { display: flex; justify-content: space-between; align-items: center; background: #1e293b; border: 1px solid #334155; padding: 2px 16px; border-radius: 6px; flex: 1; min-height: 0; }
-        
-        /* TAMAÑOS GRANDES ADAPTADOS PARA 20 FILAS EN PANTALLA VERTICAL */
-        .posicion { font-size: clamp(1rem, 1.9vh, 1.7rem); color: #94a3b8; font-weight: bold; line-height: 1; }
-        .valor { font-weight: 900; font-size: clamp(1.35rem, 2.7vh, 2.9rem); color: #ffffff; font-family: monospace; letter-spacing: 2px; line-height: 1; }
-        
-        .cabeza { background: #22c55e; border-color: #4ade80; box-shadow: 0 0 15px rgba(34,197,94,0.4); padding: 4px 16px; flex: 1.35; }
-        .cabeza .posicion { color: #ffffff; font-size: clamp(1.2rem, 2.2vh, 2rem); }
-        .cabeza .valor { color: #ffffff; font-size: clamp(1.7rem, 3.4vh, 3.6rem); letter-spacing: 3px; }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <h1>🎰 Lotería Agencia</h1>
-    <div class="fecha-actual" id="fechaText">Cargando extractos oficiales...</div>
-    <div id="panelSorteos"></div>
-</div>
-
-<script>
-    /*INYECCION_DE_DATOS*/
-
-    var TIEMPO_ACTUALIZACION = 60000;
-    var ordenTurnos = ['Previa', 'Primera', 'Matutina', 'Vespertina', 'Nocturna'];
-
-    function mostrarSorteoVigente() {
-        if (!datosGlobales || !datosGlobales.sorteos || datosGlobales.sorteos.length === 0) return;
-
-        var turnoAMostrar = datosGlobales.turnoVigente || null;
-        if (!turnoAMostrar) {
-            for (var i = 0; i < ordenTurnos.length; i++) {
-                var candidato = ordenTurnos[i];
-                for (var k = 0; k < datosGlobales.sorteos.length; k++) {
-                    if (datosGlobales.sorteos[k].nombre === candidato) {
-                        turnoAMostrar = candidato;
-                    }
-                }
-            }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
         }
 
-        if (turnoAMostrar) {
-            renderizarPizarra(datosGlobales, turnoAMostrar);
-        }
-    }
-
-    function renderizarPizarra(data, turno) {
-        document.getElementById('fechaText').innerText = 'Extractos Oficiales - Hoy: ' + data.fecha;
-        var panel = document.getElementById('panelSorteos');
-        panel.innerHTML = ''; 
-
-        var sorteosDelHorario = [];
-        for (var m = 0; m < data.sorteos.length; m++) {
-            if (data.sorteos[m].nombre === turno) {
-                sorteosDelHorario.push(data.sorteos[m]);
-            }
+        body {
+            font-family: 'Arial Narrow', Arial, Helvetica, sans-serif;
+            background-color: #0b193d;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
-        var bloqueHorario = document.createElement('div');
-        bloqueHorario.className = 'bloque-horario';
-
-        var html = '<div class="horario-header">🔥 QUINIELA ' + turno.toUpperCase() + ' 🔥</div>' +
-                   '<div class="loterias-grid">';
-
-        for (var n = 0; n < sorteosDelHorario.length; n++) {
-            var sorteoLoteria = sorteosDelHorario[n];
-            html += '<div class="columna-loteria">' +
-                    '<div class="loteria-titulo">' + sorteoLoteria.loteria + '</div>' +
-                    '<div class="numeros-lista">';
-
-            for (var i = 0; i < 20; i++) {
-                var numeroImprimir = (sorteoLoteria.numeros && sorteoLoteria.numeros[i]) ? sorteoLoteria.numeros[i] : "----";
-                
-                if (numeroImprimir !== "----") {
-                    while (numeroImprimir.length < 4) {
-                        numeroImprimir = '0' + numeroImprimir;
-                    }
-                    if (i > 0) {
-                        numeroImprimir = numeroImprimir.substring(1); 
-                    }
-                }
-
-                html += '<div class="numero-fila ' + (i === 0 ? 'cabeza' : '') + '">' +
-                        '<span class="posicion">' + (i + 1) + '°</span>' +
-                        '<span class="valor">' + numeroImprimir + '</span>' +
-                        '</div>';
-            }
-
-            html += '</div></div>';
+        /* TABLERO GENERAL */
+        .pizarra {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: #0082c8;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
         }
 
-        html += '</div>'; 
-        bloqueHorario.innerHTML = html;
-        panel.appendChild(bloqueHorario);
-    }
-
-    async function actualizarEnVivo() {
-        try {
-            var res = await fetch('/api/datos');
-            if (res.ok) {
-                var nuevos = await res.json();
-                if (nuevos && nuevos.sorteos) {
-                    datosGlobales = nuevos;
-                    mostrarSorteoVigente();
-                }
-            }
-        } catch (e) {
-            console.error('Error actualizando:', e);
+        /* ================= ENCABEZADO AZUL OSCURO ================= */
+        .top-section {
+            background: linear-gradient(180deg, #1b3582 0%, #24479e 100%);
+            padding: 8px 14px 10px 14px;
+            border-bottom: 3px solid #102254;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex-shrink: 0;
         }
-    }
 
-    function iniciarEcosistema() {
-        mostrarSorteoVigente();
-        setInterval(actualizarEnVivo, TIEMPO_ACTUALIZACION);
-    }
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
 
-    window.onload = iniciarEcosistema;
-</script>
+        /* Marca "Quiniela" + cartel de Turno */
+        .brand-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
 
-</body>
-</html>
+        .quiniela-logo {
+            font-family: 'Trebuchet MS', 'Arial Black', sans-serif;
+            font-style: italic;
+            font-weight: 900;
+            font-size: clamp(2.2rem, 5vh, 4.2rem);
+            color: #f58426;
+            letter-spacing: 1px;
+            line-height: 1;
+            text-shadow: 2px 3px 5px rgba(0, 0, 0, 0.45);
+            margin-bottom: 4px;
+        }
+
+        .turno-holder {
+            background: linear-gradient(180deg, #25509e 0%, #163675 55%, #1d438a 100%);
+            border: 2px solid #3b6bc4;
+            border-radius: 5px;
+            padding: 3px 22px;
+            box-shadow: inset 0 2px 6px rgba(255,255,255,0.25), 0 4px 8px rgba(0,0,0,0.45);
+            min-width: 220px;
+            text-align: center;
+        }
+
+        .turno-texto {
+            font-family: 'Trebuchet MS', Impact, sans-serif;
+            font-weight: 900;
+            font-size: clamp(1.5rem, 3.2vh, 2.7rem);
+            color: #f58426;
+            letter-spacing: 4px;
+            text-shadow: 1px 2px 3px rgba(0, 0, 0, 0.7);
+            line-height: 1.1;
+        }
+
+        /* Sector "SORTEO DEL DIA" + 2 fichas de fecha */
+        .sorteo-dia-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .flecha-sorteo {
+            background: #f8fafc;
+            color: #1e293b;
+            padding: 6px 24px 6px 12px;
+            clip-path: polygon(0% 0%, 78% 0%, 100% 50%, 78% 100%, 0% 100%);
+            font-weight: 900;
+            font-size: clamp(0.85rem, 1.6vh, 1.35rem);
+            line-height: 1.05;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .dia-fichas {
+            display: flex;
+            gap: 4px;
+        }
+
+        .ficha-dia {
+            background: linear-gradient(180deg, #ffffff 0%, #e5e7eb 100%);
+            color: #1e293b;
+            font-family: Impact, 'Arial Narrow', sans-serif;
+            font-size: clamp(2rem, 4.4vh, 3.6rem);
+            font-weight: 900;
+            width: clamp(36px, 5.2vw, 60px);
+            height: clamp(46px, 5.5vh, 74px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #9ca3af;
+            border-bottom: 3px solid #6b7280;
+            border-radius: 2px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+            line-height: 1;
+        }
+
+        /* Cabeceras blancas: POS | NACIONAL | PROVINCIA | SANTA FE */
+        .headers-row {
+            display: grid;
+            grid-template-columns: 13% 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: 2px;
+        }
+
+        .header-box {
+            background: #f8fafc;
+            color: #1b3582;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-weight: 900;
+            font-size: clamp(1rem, 2.2vh, 1.85rem);
+            text-align: center;
+            padding: 5px 4px;
+            border-radius: 2px;
+            box-shadow:
