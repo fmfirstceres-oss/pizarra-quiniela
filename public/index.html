@@ -3,44 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pizarra Oficial - Lotería de Santa Fe</title>
+    <title>Pizarra Vertical - Quiniela en Vivo</title>
     <style>
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            user-select: none;
         }
 
-        body {
-            font-family: 'Arial Narrow', Arial, Helvetica, sans-serif;
-            background-color: #0b193d;
-            height: 100vh;
-            width: 100vw;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* TABLERO GENERAL */
-        .pizarra {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background-color: #0082c8;
-            height: 100%;
+        html, body {
             width: 100%;
+            height: 100vh;
             overflow: hidden;
+            background-color: #0082c8;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #ffffff;
+        }
+
+        .pizarra {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100vh;
+            background-color: #0082c8;
         }
 
         /* ================= ENCABEZADO AZUL OSCURO ================= */
         .top-section {
             background: linear-gradient(180deg, #1b3582 0%, #24479e 100%);
-            padding: 8px 14px 10px 14px;
+            padding: 8px 12px 10px 12px;
             border-bottom: 3px solid #102254;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
             flex-shrink: 0;
         }
 
@@ -48,10 +40,9 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 10px;
+            margin-bottom: 8px;
         }
 
-        /* Marca "Quiniela" + cartel de Turno */
         .brand-box {
             display: flex;
             flex-direction: column;
@@ -63,35 +54,32 @@
             font-family: 'Trebuchet MS', 'Arial Black', sans-serif;
             font-style: italic;
             font-weight: 900;
-            font-size: clamp(2.2rem, 5vh, 4.2rem);
+            font-size: 3.2rem;
             color: #f58426;
-            letter-spacing: 1px;
             line-height: 1;
-            text-shadow: 2px 3px 5px rgba(0, 0, 0, 0.45);
+            text-shadow: 2px 3px 5px rgba(0, 0, 0, 0.5);
             margin-bottom: 4px;
         }
 
         .turno-holder {
             background: linear-gradient(180deg, #25509e 0%, #163675 55%, #1d438a 100%);
-            border: 2px solid #3b6bc4;
-            border-radius: 5px;
-            padding: 3px 22px;
-            box-shadow: inset 0 2px 6px rgba(255,255,255,0.25), 0 4px 8px rgba(0,0,0,0.45);
-            min-width: 220px;
+            border: 2px solid #4a7bd6;
+            border-radius: 6px;
+            padding: 2px 24px;
+            box-shadow: inset 0 2px 5px rgba(255,255,255,0.25), 0 3px 6px rgba(0,0,0,0.45);
             text-align: center;
         }
 
         .turno-texto {
             font-family: 'Trebuchet MS', Impact, sans-serif;
             font-weight: 900;
-            font-size: clamp(1.5rem, 3.2vh, 2.7rem);
+            font-size: 2.1rem;
             color: #f58426;
-            letter-spacing: 4px;
+            letter-spacing: 3px;
             text-shadow: 1px 2px 3px rgba(0, 0, 0, 0.7);
-            line-height: 1.1;
         }
 
-        /* Sector "SORTEO DEL DIA" + 2 fichas de fecha */
+        /* SORTEO DEL DIA + FICHAS DE FECHA */
         .sorteo-dia-box {
             display: flex;
             align-items: center;
@@ -99,15 +87,15 @@
         }
 
         .flecha-sorteo {
-            background: #f8fafc;
+            background: #ffffff;
             color: #1e293b;
-            padding: 6px 24px 6px 12px;
-            clip-path: polygon(0% 0%, 78% 0%, 100% 50%, 78% 100%, 0% 100%);
+            padding: 6px 14px;
+            border-radius: 4px 16px 16px 4px;
             font-weight: 900;
-            font-size: clamp(0.85rem, 1.6vh, 1.35rem);
-            line-height: 1.05;
+            font-size: 1.05rem;
+            line-height: 1.1;
             text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.35);
         }
 
         .dia-fichas {
@@ -118,36 +106,275 @@
         .ficha-dia {
             background: linear-gradient(180deg, #ffffff 0%, #e5e7eb 100%);
             color: #1e293b;
-            font-family: Impact, 'Arial Narrow', sans-serif;
-            font-size: clamp(2rem, 4.4vh, 3.6rem);
+            font-family: Impact, Arial, sans-serif;
+            font-size: 2.6rem;
             font-weight: 900;
-            width: clamp(36px, 5.2vw, 60px);
-            height: clamp(46px, 5.5vh, 74px);
+            width: 46px;
+            height: 58px;
             display: flex;
             align-items: center;
             justify-content: center;
             border: 1px solid #9ca3af;
             border-bottom: 3px solid #6b7280;
-            border-radius: 2px;
+            border-radius: 3px;
             box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+        }
+
+        /* CABECERAS BLANCAS: POS | NACIONAL | PROVINCIA | SANTA FE */
+        .headers-row {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .header-pos {
+            width: 13%;
+            background: #ffffff;
+            color: #1b3582;
+            font-family: Georgia, serif;
+            font-weight: 900;
+            font-size: 1.4rem;
+            text-align: center;
+            padding: 5px 2px;
+            border-radius: 3px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.35);
+        }
+
+        .header-lot {
+            flex: 1;
+            background: #ffffff;
+            color: #1b3582;
+            font-family: Georgia, serif;
+            font-weight: 900;
+            font-size: 1.5rem;
+            text-align: center;
+            padding: 5px 4px;
+            border-radius: 3px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.35);
+            text-transform: uppercase;
+        }
+
+        /* ================= CUERPO CELESTE (20 FILAS) ================= */
+        .board-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background: linear-gradient(180deg, #0088ce 0%, #0077b8 100%);
+            padding: 6px 12px;
+            gap: 3px;
+            min-height: 0;
+        }
+
+        .fila-premio {
+            flex: 1;
+            display: flex;
+            align-items: stretch;
+            gap: 8px;
+            width: 100%;
+            min-height: 22px;
+        }
+
+        /* Flecha blanca izquierda de posición (1 a 20) */
+        .pos-arrow {
+            width: 13%;
+            background: linear-gradient(180deg, #ffffff 0%, #e2e8f0 100%);
+            color: #0066ad;
+            font-family: Impact, 'Arial Black', sans-serif;
+            font-size: 1.45rem;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 3px 18px 18px 3px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.35);
             line-height: 1;
         }
 
-        /* Cabeceras blancas: POS | NACIONAL | PROVINCIA | SANTA FE */
-        .headers-row {
-            display: grid;
-            grid-template-columns: 13% 1fr 1fr 1fr;
-            gap: 10px;
-            margin-top: 2px;
+        /* Ranura metálica gris donde van las fichas */
+        .ranura-metalica {
+            flex: 1;
+            background: linear-gradient(180deg, #8b959e 0%, #abb4bc 45%, #909aa3 100%);
+            border: 1px solid #5a6570;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.45);
+            border-radius: 3px;
+            display: flex;
+            gap: 2px;
+            padding: 2px;
         }
 
-        .header-box {
-            background: #f8fafc;
-            color: #1b3582;
-            font-family: Georgia, 'Times New Roman', serif;
+        /* Ficha blanca individual por cada dígito */
+        .ficha-num {
+            flex: 1;
+            background: linear-gradient(180deg, #ffffff 0%, #f1f0ec 85%, #dfddd6 100%);
+            color: #1e1e1e;
+            font-family: Impact, 'Arial Narrow', Arial, sans-serif;
+            font-size: 1.85rem;
             font-weight: 900;
-            font-size: clamp(1rem, 2.2vh, 1.85rem);
-            text-align: center;
-            padding: 5px 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #a8a29e;
+            border-right: 2px solid #78716c;
+            border-bottom: 2px solid #78716c;
             border-radius: 2px;
-            box-shadow:
+            box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.35);
+            line-height: 1;
+        }
+
+        /* Cabeza (1° premio) resaltada sutilmente */
+        .fila-cabeza .ficha-num {
+            background: linear-gradient(180deg, #ffffff 0%, #fef08a 100%);
+            color: #000000;
+        }
+
+        /* Espacio gris vacío dentro de la ranura metálica */
+        .ficha-vacia {
+            flex: 1;
+            background: transparent;
+        }
+
+        /* ================= PIE DE PÁGINA AZUL OSCURO ================= */
+        .footer-bar {
+            background: linear-gradient(180deg, #162f75 0%, #0f2359 100%);
+            padding: 6px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            border-top: 2px solid #284b9e;
+            flex-shrink: 0;
+        }
+
+        .footer-logo {
+            width: 26px;
+            height: 26px;
+        }
+
+        .footer-text {
+            color: #ffffff;
+            font-family: 'Trebuchet MS', Arial, sans-serif;
+            font-weight: 800;
+            font-size: 1.15rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+
+<div class="pizarra">
+    <!-- ENCABEZADO SUPERIOR -->
+    <div class="top-section">
+        <div class="top-bar">
+            <div class="brand-box">
+                <div class="quiniela-logo">Quiniela</div>
+                <div class="turno-holder">
+                    <span class="turno-texto" id="turnoText">Cargando...</span>
+                </div>
+            </div>
+
+            <div class="sorteo-dia-box">
+                <div class="flecha-sorteo">
+                    SORTEO<br>DEL DIA
+                </div>
+                <div class="dia-fichas">
+                    <div class="ficha-dia" id="diaDecena">-</div>
+                    <div class="ficha-dia" id="diaUnidad">-</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="headers-row">
+            <div class="header-pos">POS</div>
+            <div class="header-lot" id="tituloCol1">NACIONAL</div>
+            <div class="header-lot" id="tituloCol2">PROVINCIA</div>
+            <div class="header-lot" id="tituloCol3">SANTA FE</div>
+        </div>
+    </div>
+
+    <!-- CUERPO DE 20 FILAS -->
+    <div class="board-body" id="boardBody"></div>
+
+    <!-- PIE DE PÁGINA -->
+    <div class="footer-bar">
+        <svg class="footer-logo" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="42" stroke="white" stroke-width="8" stroke-dasharray="200 60" />
+            <circle cx="38" cy="35" r="5" fill="white" />
+            <circle cx="62" cy="35" r="5" fill="white" />
+            <circle cx="32" cy="55" r="5" fill="white" />
+            <circle cx="50" cy="65" r="5" fill="white" />
+            <circle cx="68" cy="55" r="5" fill="white" />
+        </svg>
+        <span class="footer-text">LOTERIA DE SANTA FE</span>
+    </div>
+</div>
+
+<script>
+    var datosGlobales = null;
+    // MARCA DE REEMPLAZO: El servidor Express va a sobreescribir este comentario metiendo los números reales aquí dentro.
+    /*INYECCION_DE_DATOS*/
+
+    var TIEMPO_ACTUALIZACION = 60000;
+    var ordenTurnos = ['Previa', 'Primera', 'Matutina', 'Vespertina', 'Nocturna'];
+
+    function tieneNumerosCargados(listaNumeros) {
+        if (!listaNumeros || !listaNumeros.length) return false;
+        for (var i = 0; i < listaNumeros.length; i++) {
+            var val = String(listaNumeros[i] || '').trim();
+            if (val !== '' && val !== '----' && /\d/.test(val)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function construirRanuraHTML(numeroRaw, esCabeza) {
+        var texto = numeroRaw ? String(numeroRaw).trim() : '';
+        var soloDigitos = texto.replace(/\D/g, '');
+
+        if (!soloDigitos || texto === '----') {
+            return '<div class="ranura-metalica">' +
+                   '<div class="ficha-vacia"></div>' +
+                   '<div class="ficha-vacia"></div>' +
+                   '<div class="ficha-vacia"></div>' +
+                   '<div class="ficha-vacia"></div>' +
+                   '</div>';
+        }
+
+        var c4 = soloDigitos.padStart(4, '0').slice(-4);
+
+        if (esCabeza) {
+            // 1° Premio (Cabeza): 4 cifras en 4 fichas blancas
+            return '<div class="ranura-metalica">' +
+                   '<div class="ficha-num">' + c4[0] + '</div>' +
+                   '<div class="ficha-num">' + c4[1] + '</div>' +
+                   '<div class="ficha-num">' + c4[2] + '</div>' +
+                   '<div class="ficha-num">' + c4[3] + '</div>' +
+                   '</div>';
+        } else {
+            // Premios 2° al 20°: 3 cifras en 3 fichas + 1 espacio gris vacío a la derecha
+            var c3 = c4.slice(-3);
+            return '<div class="ranura-metalica">' +
+                   '<div class="ficha-num">' + c3[0] + '</div>' +
+                   '<div class="ficha-num">' + c3[1] + '</div>' +
+                   '<div class="ficha-num">' + c3[2] + '</div>' +
+                   '<div class="ficha-vacia"></div>' +
+                   '</div>';
+        }
+    }
+
+    function actualizarDiaDelMes(fechaStr) {
+        var dia = String(new Date().getDate()).padStart(2, '0');
+        if (fechaStr) {
+            var matchDia = String(fechaStr).match(/\b(\d{1,2})\b/);
+            if (matchDia) {
+                dia = matchDia[1].padStart(2, '0');
+            }
+        }
+        document.getElementById('diaDecena').innerText = dia[0];
+        document.getElementById('diaUnidad').innerText = dia[1];
+    }
+
+    function dibujarTableroVacio() {
+        actualizarDiaDelMes(null);
