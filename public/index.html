@@ -209,13 +209,33 @@
             padding: 2px;
         }
 
-        /* Ficha blanca individual optimizada para máxima visibilidad a distancia */
+        /* Ficha blanca individual para los premios 2° al 20° (3 cifras) */
         .ficha-num {
             flex: 1;
             background: #ffffff;
             color: #000000;
             font-family: Impact, 'Arial Narrow', Arial, sans-serif;
             font-size: 1.95rem;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #9ca3af;
+            border-right: 2px solid #4b5563;
+            border-bottom: 2px solid #4b5563;
+            border-radius: 2px;
+            box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.45);
+            text-shadow: 0px 0px 1px rgba(0, 0, 0, 0.4);
+            line-height: 1;
+        }
+
+        /* Ficha blanca individual exclusiva para la CABEZA / 1° PREMIO (4 cifras más grandes) */
+        .ficha-cabeza {
+            flex: 1;
+            background: #ffffff;
+            color: #000000;
+            font-family: Impact, 'Arial Narrow', Arial, sans-serif;
+            font-size: 2.3rem; /* Fichas de cabeza ligeramente más grandes y destacadas */
             font-weight: 900;
             display: flex;
             align-items: center;
@@ -354,15 +374,15 @@
         c4 = c4.substring(c4.length - 4);
 
         if (esCabeza) {
-            // Puesto 1 (Cabeza): 4 cifras en las 4 fichas blancas
+            // Puesto 1 (Cabeza): 4 cifras con fichas más grandes (ficha-cabeza)
             return '<div class="ranura-metalica">' +
-                   '<div class="ficha-num">' + c4.charAt(0) + '</div>' +
-                   '<div class="ficha-num">' + c4.charAt(1) + '</div>' +
-                   '<div class="ficha-num">' + c4.charAt(2) + '</div>' +
-                   '<div class="ficha-num">' + c4.charAt(3) + '</div>' +
+                   '<div class="ficha-cabeza">' + c4.charAt(0) + '</div>' +
+                   '<div class="ficha-cabeza">' + c4.charAt(1) + '</div>' +
+                   '<div class="ficha-cabeza">' + c4.charAt(2) + '</div>' +
+                   '<div class="ficha-cabeza">' + c4.charAt(3) + '</div>' +
                    '</div>';
         } else {
-            // Puestos 2 al 20: 1 espacio gris a la izquierda + 3 fichas alineadas bajo las últimas 3 cifras de la Cabeza
+            // Puestos 2 al 20: 1 espacio gris a la izquierda + 3 fichas blancas estándar (ficha-num)
             var c3 = c4.substring(1);
             return '<div class="ranura-metalica">' +
                    '<div class="ficha-vacia"></div>' +
