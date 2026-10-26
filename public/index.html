@@ -15,17 +15,23 @@
             width: 100%;
             height: 100vh;
             overflow: hidden;
-            background-color: #0082c8;
+            background-color: #0a1938;
             font-family: Arial, Helvetica, sans-serif;
             color: #ffffff;
+            padding: 6px; /* Margen exterior para lucir el encuadre */
         }
 
+        /* MARCO AZUL ENCUADRANDO TODA LA PIZARRA */
         .pizarra {
             display: flex;
             flex-direction: column;
             width: 100%;
-            height: 100vh;
+            height: 100%;
             background-color: #0082c8;
+            border: 6px solid #1b3582;
+            box-shadow: inset 0 0 0 2px #38bdf8, 0 0 15px rgba(0, 0, 0, 0.7);
+            border-radius: 8px;
+            overflow: hidden;
         }
 
         /* ================= ENCABEZADO AZUL OSCURO ================= */
@@ -347,7 +353,7 @@
         c4 = c4.substring(c4.length - 4);
 
         if (esCabeza) {
-            // Puesto 1 (Cabeza): 4 cifras en 4 fichas blancas
+            // Puesto 1 (Cabeza): 4 cifras en las 4 fichas blancas
             return '<div class="ranura-metalica">' +
                    '<div class="ficha-num">' + c4.charAt(0) + '</div>' +
                    '<div class="ficha-num">' + c4.charAt(1) + '</div>' +
@@ -355,13 +361,13 @@
                    '<div class="ficha-num">' + c4.charAt(3) + '</div>' +
                    '</div>';
         } else {
-            // Puestos 2 al 20: 3 cifras en 3 fichas blancas + 1 espacio gris a la derecha
+            // Puestos 2 al 20: 1 espacio gris a la izquierda + 3 fichas alineadas bajo las últimas 3 cifras de la Cabeza
             var c3 = c4.substring(1);
             return '<div class="ranura-metalica">' +
+                   '<div class="ficha-vacia"></div>' +
                    '<div class="ficha-num">' + c3.charAt(0) + '</div>' +
                    '<div class="ficha-num">' + c3.charAt(1) + '</div>' +
                    '<div class="ficha-num">' + c3.charAt(2) + '</div>' +
-                   '<div class="ficha-vacia"></div>' +
                    '</div>';
         }
     }
@@ -401,7 +407,6 @@
             return;
         }
 
-        // Buscar el último turno en orden cronológico que ya tenga números sorteados
         var turnoElegido = null;
         for (var i = 0; i < ordenTurnos.length; i++) {
             var candidato = ordenTurnos[i];
@@ -413,7 +418,6 @@
             }
         }
 
-        // Si ninguno tiene números aún, usar turnoVigente o el primero de la lista
         if (!turnoElegido) {
             turnoElegido = data.turnoVigente || (data.sorteos[0] ? data.sorteos[0].nombre : 'Previa');
         }
