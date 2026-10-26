@@ -1,4 +1,3 @@
-// scraper.js
 const axios = require('axios');
 const cheerio = require('cheerio');
 
@@ -17,9 +16,9 @@ class QuinielaScraper {
     return cheerio.load(response.data);
   }
 
-  // Extrae un array de 10 números (de 4 cifras) ordenados del 1° al 10° puesto
-  _parsePrimerosDiez($, $table) {
-    const numeros = Array(10).fill('----');
+  // Extrae los 20 premios ordenados del 1° al 20° puesto
+  _parsePrimerosVeinte($, $table) {
+    const numeros = Array(20).fill('----');
     let tieneDatos = false;
 
     if (!$table || $table.length === 0) return { tieneDatos, numeros };
@@ -30,7 +29,7 @@ class QuinielaScraper {
         const pos = parseInt($($cells[j]).text().trim(), 10);
         const numCell = $cells[j + 1];
 
-        if (!isNaN(pos) && pos >= 1 && pos <= 10 && numCell) {
+        if (!isNaN(pos) && pos >= 1 && pos <= 20 && numCell) {
           const boldText = $(numCell).find('b').text().trim();
           const rawText = boldText || $(numCell).text().trim();
           const match = rawText.match(/\d{1,4}/);
@@ -70,7 +69,7 @@ class QuinielaScraper {
         else if (heading.includes('nocturna')) turno = 'Nocturna';
 
         if (turno) {
-          const { tieneDatos, numeros } = this._parsePrimerosDiez($, $table);
+          const { tieneDatos, numeros } = this._parsePrimerosVeinte($, $table);
           if (tieneDatos) {
             porTurno[turno] = numeros;
           }
@@ -97,7 +96,6 @@ class QuinielaScraper {
       }))
     );
 
-    // Determinar cuál es el último turno (sorteo vigente) que ya tiene números cargados
     let turnoVigente = null;
     for (const turno of this.ordenTurnos) {
       const algunaTieneDatos = resultadosLoterias.some(
@@ -112,11 +110,10 @@ class QuinielaScraper {
       return null;
     }
 
-    // Armar el listado solo con el sorteo vigente para las 3 quinielas
     const sorteos = resultadosLoterias.map(r => ({
       nombre: turnoVigente,
       loteria: r.loteria,
-      numeros: r.turnos[turnoVigente] || Array(10).fill('----')
+      numeros: r.turnos[turnoVigente] || Array(20).fill('----')
     }));
 
     return {
@@ -127,27 +124,23 @@ class QuinielaScraper {
   }
 
   async obtenerDatosPizarra() {
-    // 1. Intentar con los sorteos de HOY
     const datosHoy = await this._obtenerDatosDelDia('resultados-de-hoy', 0);
     if (datosHoy) {
       return datosHoy;
     }
 
-    // 2. Si todavía no salió La Previa de hoy, mostrar la Nocturna de AYER
-    console.log('Aún sin sorteos de hoy. Mostrando último sorteo de ayer (Nocturna)...');
     const datosAyer = await this._obtenerDatosDelDia('resultados-de-ayer', -1);
     if (datosAyer) {
       return datosAyer;
     }
 
-    // 3. Estructura vacía de respaldo si no hay conexión
     return {
       fecha: this.obtenerFecha(0),
       turnoVigente: 'Previa',
       sorteos: [
-        { nombre: 'Previa', loteria: 'Santa Fe', numeros: Array(10).fill('----') },
-        { nombre: 'Previa', loteria: 'Provincia', numeros: Array(10).fill('----') },
-        { nombre: 'Previa', loteria: 'Nacional', numeros: Array(10).fill('----') }
+        { nombre: 'Previa', loteria: 'Santa Fe', numeros: Array(20).fill('----') },
+        { nombre: 'Previa', loteria: 'Provincia', numeros: Array(20).fill('----') },
+        { nombre: 'Previa', loteria: 'Nacional', numeros: Array(20).fill('----') }
       ]
     };
   }
