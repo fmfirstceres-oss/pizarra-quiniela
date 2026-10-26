@@ -222,12 +222,6 @@
             line-height: 1;
         }
 
-        /* Cabeza (1° premio) resaltada sutilmente */
-        .fila-cabeza .ficha-num {
-            background: linear-gradient(180deg, #ffffff 0%, #fef08a 100%);
-            color: #000000;
-        }
-
         /* Espacio gris vacío dentro de la ranura metálica */
         .ficha-vacia {
             flex: 1;
@@ -270,7 +264,7 @@
             <div class="brand-box">
                 <div class="quiniela-logo">Quiniela</div>
                 <div class="turno-holder">
-                    <span class="turno-texto" id="turnoText">Cargando...</span>
+                    <span class="turno-texto" id="turnoText">Nocturna</span>
                 </div>
             </div>
 
@@ -287,9 +281,9 @@
 
         <div class="headers-row">
             <div class="header-pos">POS</div>
-            <div class="header-lot" id="tituloCol1">NACIONAL</div>
-            <div class="header-lot" id="tituloCol2">PROVINCIA</div>
-            <div class="header-lot" id="tituloCol3">SANTA FE</div>
+            <div class="header-lot">NACIONAL</div>
+            <div class="header-lot">PROVINCIA</div>
+            <div class="header-lot">SANTA FE</div>
         </div>
     </div>
 
@@ -311,18 +305,25 @@
 </div>
 
 <script>
-    var datosGlobales = null;
     // MARCA DE REEMPLAZO: El servidor Express va a sobreescribir este comentario metiendo los números reales aquí dentro.
     /*INYECCION_DE_DATOS*/
 
-    var TIEMPO_ACTUALIZACION = 60000;
+    var TIEMPO_RECARGA = 60000; // Actualizar pizarra cada 1 minuto
     var ordenTurnos = ['Previa', 'Primera', 'Matutina', 'Vespertina', 'Nocturna'];
 
-    function tieneNumerosCargados(listaNumeros) {
-        if (!listaNumeros || !listaNumeros.length) return false;
-        for (var i = 0; i < listaNumeros.length; i++) {
-            var val = String(listaNumeros[i] || '').trim();
-            if (val !== '' && val !== '----' && /\d/.test(val)) {
+    function rellenarCeros(texto, largo) {
+        var s = String(texto || '');
+        while (s.length < largo) {
+            s = '0' + s;
+        }
+        return s;
+    }
+
+    function tieneNumerosCargados(lista) {
+        if (!lista || !lista.length) return false;
+        for (var i = 0; i < lista.length; i++) {
+            var limpio = String(lista[i] || '').replace(/\D/g, '');
+            if (limpio.length > 0) {
                 return true;
             }
         }
@@ -330,10 +331,10 @@
     }
 
     function construirRanuraHTML(numeroRaw, esCabeza) {
-        var texto = numeroRaw ? String(numeroRaw).trim() : '';
+        var texto = numeroRaw ? String(numeroRaw) : '';
         var soloDigitos = texto.replace(/\D/g, '');
 
-        if (!soloDigitos || texto === '----') {
+        if (!soloDigitos || texto.indexOf('-') !== -1) {
             return '<div class="ranura-metalica">' +
                    '<div class="ficha-vacia"></div>' +
                    '<div class="ficha-vacia"></div>' +
@@ -342,39 +343,143 @@
                    '</div>';
         }
 
-        var c4 = soloDigitos.padStart(4, '0').slice(-4);
+        var c4 = rellenarCeros(soloDigitos, 4);
+        c4 = c4.substring(c4.length - 4);
 
         if (esCabeza) {
-            // 1° Premio (Cabeza): 4 cifras en 4 fichas blancas
+            // Puesto 1 (Cabeza): 4 cifras en 4 fichas blancas
             return '<div class="ranura-metalica">' +
-                   '<div class="ficha-num">' + c4[0] + '</div>' +
-                   '<div class="ficha-num">' + c4[1] + '</div>' +
-                   '<div class="ficha-num">' + c4[2] + '</div>' +
-                   '<div class="ficha-num">' + c4[3] + '</div>' +
+                   '<div class="ficha-num">' + c4.charAt(0) + '</div>' +
+                   '<div class="ficha-num">' + c4.charAt(1) + '</div>' +
+                   '<div class="ficha-num">' + c4.charAt(2) + '</div>' +
+                   '<div class="ficha-num">' + c4.charAt(3) + '</div>' +
                    '</div>';
         } else {
-            // Premios 2° al 20°: 3 cifras en 3 fichas + 1 espacio gris vacío a la derecha
-            var c3 = c4.slice(-3);
+            // Puestos 2 al 20: 3 cifras en 3 fichas blancas + 1 espacio gris a la derecha
+            var c3 = c4.substring(1);
             return '<div class="ranura-metalica">' +
-                   '<div class="ficha-num">' + c3[0] + '</div>' +
-                   '<div class="ficha-num">' + c3[1] + '</div>' +
-                   '<div class="ficha-num">' + c3[2] + '</div>' +
+                   '<div class="ficha-num">' + c3.charAt(0) + '</div>' +
+                   '<div class="ficha-num">' + c3.charAt(1) + '</div>' +
+                   '<div class="ficha-num">' + c3.charAt(2) + '</div>' +
                    '<div class="ficha-vacia"></div>' +
                    '</div>';
         }
     }
 
     function actualizarDiaDelMes(fechaStr) {
-        var dia = String(new Date().getDate()).padStart(2, '0');
+        var dia = rellenarCeros(new Date().getDate(), 2);
         if (fechaStr) {
-            var matchDia = String(fechaStr).match(/\b(\d{1,2})\b/);
-            if (matchDia) {
-                dia = matchDia[1].padStart(2, '0');
+            var match = String(fechaStr).match(/\b(\d{1,2})\b/);
+            if (match && match[1]) {
+                dia = rellenarCeros(match[1], 2);
             }
         }
-        document.getElementById('diaDecena').innerText = dia[0];
-        document.getElementById('diaUnidad').innerText = dia[1];
+        document.getElementById('diaDecena').innerText = dia.charAt(0);
+        document.getElementById('diaUnidad').innerText = dia.charAt(1);
     }
 
     function dibujarTableroVacio() {
         actualizarDiaDelMes(null);
+        var board = document.getElementById('boardBody');
+        var htmlFilas = '';
+        for (var i = 0; i < 20; i++) {
+            htmlFilas += '<div class="fila-premio">' +
+                         '<div class="pos-arrow">' + (i + 1) + '</div>' +
+                         construirRanuraHTML('----', i === 0) +
+                         construirRanuraHTML('----', i === 0) +
+                         construirRanuraHTML('----', i === 0) +
+                         '</div>';
+        }
+        board.innerHTML = htmlFilas;
+    }
+
+    function mostrarSorteoVigente() {
+        var data = (typeof datosGlobales !== 'undefined' && datosGlobales) ? datosGlobales : null;
+
+        if (!data || !data.sorteos || data.sorteos.length === 0) {
+            dibujarTableroVacio();
+            return;
+        }
+
+        // Buscar el último turno en orden cronológico que ya tenga números sorteados
+        var turnoElegido = null;
+        for (var i = 0; i < ordenTurnos.length; i++) {
+            var candidato = ordenTurnos[i];
+            for (var k = 0; k < data.sorteos.length; k++) {
+                var item = data.sorteos[k];
+                if (item.nombre && item.nombre.toLowerCase() === candidato.toLowerCase() && tieneNumerosCargados(item.numeros)) {
+                    turnoElegido = item.nombre;
+                }
+            }
+        }
+
+        // Si ninguno tiene números aún, usar turnoVigente o el primero de la lista
+        if (!turnoElegido) {
+            turnoElegido = data.turnoVigente || (data.sorteos[0] ? data.sorteos[0].nombre : 'Previa');
+        }
+
+        renderizarPizarra(data, turnoElegido);
+    }
+
+    function renderizarPizarra(data, turno) {
+        document.getElementById('turnoText').innerText = turno;
+        actualizarDiaDelMes(data.fecha);
+
+        var sorteosDelHorario = [];
+        for (var m = 0; m < data.sorteos.length; m++) {
+            if (data.sorteos[m].nombre && data.sorteos[m].nombre.toLowerCase() === turno.toLowerCase()) {
+                sorteosDelHorario.push(data.sorteos[m]);
+            }
+        }
+
+        var numsNacional = null;
+        var numsProvincia = null;
+        var numsSantaFe = null;
+
+        for (var n = 0; n < sorteosDelHorario.length; n++) {
+            var nombreLot = String(sorteosDelHorario[n].loteria || '').toLowerCase();
+            if (nombreLot.indexOf('nac') !== -1 || nombreLot.indexOf('ciudad') !== -1) {
+                numsNacional = sorteosDelHorario[n].numeros;
+            } else if (nombreLot.indexOf('prov') !== -1 || nombreLot.indexOf('buenos') !== -1 || nombreLot.indexOf('bs') !== -1) {
+                numsProvincia = sorteosDelHorario[n].numeros;
+            } else if (nombreLot.indexOf('santa') !== -1 || nombreLot.indexOf('fe') !== -1) {
+                numsSantaFe = sorteosDelHorario[n].numeros;
+            }
+        }
+
+        if (!numsNacional && sorteosDelHorario[0]) numsNacional = sorteosDelHorario[0].numeros;
+        if (!numsProvincia && sorteosDelHorario[1]) numsProvincia = sorteosDelHorario[1].numeros;
+        if (!numsSantaFe && sorteosDelHorario[2]) numsSantaFe = sorteosDelHorario[2].numeros;
+
+        numsNacional = numsNacional || [];
+        numsProvincia = numsProvincia || [];
+        numsSantaFe = numsSantaFe || [];
+
+        var board = document.getElementById('boardBody');
+        var htmlFilas = '';
+
+        for (var i = 0; i < 20; i++) {
+            var esCabeza = (i === 0);
+            htmlFilas += '<div class="fila-premio">' +
+                         '<div class="pos-arrow">' + (i + 1) + '</div>' +
+                         construirRanuraHTML(numsNacional[i], esCabeza) +
+                         construirRanuraHTML(numsProvincia[i], esCabeza) +
+                         construirRanuraHTML(numsSantaFe[i], esCabeza) +
+                         '</div>';
+        }
+
+        board.innerHTML = htmlFilas;
+    }
+
+    function iniciarEcosistema() {
+        mostrarSorteoVigente();
+        setInterval(function() {
+            window.location.reload();
+        }, TIEMPO_RECARGA);
+    }
+
+    window.onload = iniciarEcosistema;
+</script>
+
+</body>
+</html>
