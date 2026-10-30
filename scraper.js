@@ -6,17 +6,26 @@ class QuinielaScraper {
     this.baseUrl = 'https://quinieleando.com.ar';
     this.headers = {
       'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
     };
     this.ordenTurnos = ['Previa', 'Primera', 'Matutina', 'Vespertina', 'Nocturna'];
   }
 
   async obtenerPagina(url) {
-    const response = await axios.get(url, { headers: this.headers, timeout: 15000 });
+    // Rompedor de caché con timestamp para que nunca traiga datos viejos
+    const separador = url.includes('?') ? '&' : '?';
+    const urlSinCache = `${url}${separador}_t=${Date.now()}`;
+
+    const response = await axios.get(urlSinCache, {
+      headers: this.headers,
+      timeout: 15000
+    });
     return cheerio.load(response.data);
   }
 
-  // Extrae los 20 premios ordenados del 1° al 20° puesto
   _parsePrimerosVeinte($, $table) {
     const numeros = Array(20).fill('----');
     let tieneDatos = false;
@@ -117,8 +126,9 @@ class QuinielaScraper {
     }));
 
     return {
-      fecha: this.obtenerFecha(diasOffset),
+      fecha: this.obtenerFechaArgentina(diasOffset),
       turnoVigente,
+      ultimaActualizacion: new Date().toISOString(),
       sorteos
     };
   }
@@ -134,25 +144,20 @@ class QuinielaScraper {
       return datosAyer;
     }
 
-    return {
-      fecha: this.obtenerFecha(0),
-      turnoVigente: 'Previa',
-      sorteos: [
-        { nombre: 'Previa', loteria: 'Santa Fe', numeros: Array(20).fill('----') },
-        { nombre: 'Previa', loteria: 'Provincia', numeros: Array(20).fill('----') },
-        { nombre: 'Previa', loteria: 'Nacional', numeros: Array(20).fill('----') }
-      ]
-    };
+    return null;
   }
 
-  obtenerFecha(diasOffset = 0) {
-    const fecha = new Date();
-    fecha.setDate(fecha.getDate() + diasOffset);
-    return fecha.toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+  obtenerFechaArgentina(diasOffset = 0) {
+    // Obtener fecha exacta en hora de Argentina (sin importar que Render esté en UTC)
+    const ahoraAR = new Date(
+      new Date().toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' })
+    );
+    ahoraAR.setDate(ahoraAR.getDate() + diasOffset);
+
+    const dia = String(ahoraAR.getDate()).padStart(2, '0');
+    const mes = String(ahoraAR.getMonth() + 1).padStart(2, '0');
+    const anio = ahoraAR.getFullYear();
+    return `${dia}/${mes}/${anio}`;
   }
 }
 
